@@ -9,7 +9,7 @@ def get_physicians_data(page=1, size=20):
     
     headers = {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MjMyMzI2LCJlbWFpbCI6Im11c3RhZmFrYXJhbmphd2FsYTcyQGdtYWlsLmNvbSIsImdpdmVuTmFtZSI6Ik11c3RhZmEiLCJmYW1pbHlOYW1lIjoiS2FyYW5qYXdhbGEiLCJoYXNQTUFjY291bnQiOmZhbHNlLCJ2YWxpZEFkbWluRG9tYWluIjpmYWxzZSwicG1UZWFtRGlzYWJsZWRTdGF0dXMiOm51bGwsInByb2ZpbGVNYW5hZ2VtZW50QWNjb3VudERpc2FibGVkIjpudWxsLCJOUEkiOm51bGwsInNvY2lhbExvZ2luIjp0cnVlLCJzb2NpYWxMb2dpblZpYSI6Ikdvb2dsZSIsImlhdCI6MTc1MjQ4MTIxNCwiZXhwIjoxNzUyNTY3NjE0LCJpc3MiOiJNZWRpRmluZCJ9.p0XELt9iX-7D61dcoG5vseYLmZi0G9hC5KyR6L03J5k'
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MjMyMzI2LCJlbWFpbCI6Im11c3RhZmFrYXJhbmphd2FsYTcyQGdtYWlsLmNvbSIsImdpdmVuTmFtZSI6Ik11c3RhZmEiLCJmYW1pbHlOYW1lIjoiS2FyYW5qYXdhbGEiLCJoYXNQTUFjY291bnQiOmZhbHNlLCJ2YWxpZEFkbWluRG9tYWluIjpmYWxzZSwicG1UZWFtRGlzYWJsZWRTdGF0dXMiOm51bGwsInByb2ZpbGVNYW5hZ2VtZW50QWNjb3VudERpc2FibGVkIjpudWxsLCJOUEkiOm51bGwsImlhdCI6MTc1MjU2NjI1OCwiZXhwIjoxNzUyNjUyNjU4LCJpc3MiOiJNZWRpRmluZCJ9.o4NJJJYNZ1dhKborzW5NgOtysFgDtF9apM9X57-K3nI'
     }
     
     # Main payload - this is what works in Postman

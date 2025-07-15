@@ -35,7 +35,7 @@ class PhysicianScraper:
                 'Accept-Encoding': 'gzip, deflate, br',
                 'Connection': 'keep-alive',
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MjMyMzI2LCJlbWFpbCI6Im11c3RhZmFrYXJhbmphd2FsYTcyQGdtYWlsLmNvbSIsImdpdmVuTmFtZSI6Ik11c3RhZmEiLCJmYW1pbHlOYW1lIjoiS2FyYW5qYXdhbGEiLCJoYXNQTUFjY291bnQiOmZhbHNlLCJ2YWxpZEFkbWluRG9tYWluIjpmYWxzZSwicG1UZWFtRGlzYWJsZWRTdGF0dXMiOm51bGwsInByb2ZpbGVNYW5hZ2VtZW50QWNjb3VudERpc2FibGVkIjpudWxsLCJOUEkiOm51bGwsInNvY2lhbExvZ2luIjp0cnVlLCJzb2NpYWxMb2dpblZpYSI6Ikdvb2dsZSIsImlhdCI6MTc1MjQ4MTIxNCwiZXhwIjoxNzUyNTY3NjE0LCJpc3MiOiJNZWRpRmluZCJ9.p0XELt9iX-7D61dcoG5vseYLmZi0G9hC5KyR6L03J5k',
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MjMyMzI2LCJlbWFpbCI6Im11c3RhZmFrYXJhbmphd2FsYTcyQGdtYWlsLmNvbSIsImdpdmVuTmFtZSI6Ik11c3RhZmEiLCJmYW1pbHlOYW1lIjoiS2FyYW5qYXdhbGEiLCJoYXNQTUFjY291bnQiOmZhbHNlLCJ2YWxpZEFkbWluRG9tYWluIjpmYWxzZSwicG1UZWFtRGlzYWJsZWRTdGF0dXMiOm51bGwsInByb2ZpbGVNYW5hZ2VtZW50QWNjb3VudERpc2FibGVkIjpudWxsLCJOUEkiOm51bGwsImlhdCI6MTc1MjU2NjI1OCwiZXhwIjoxNzUyNjUyNjU4LCJpc3MiOiJNZWRpRmluZCJ9.o4NJJJYNZ1dhKborzW5NgOtysFgDtF9apM9X57-K3nI',
                 'Referer': 'https://www.medifind.com/conditions/neuroendocrine-tumor/3766/doctors',
                 'Origin': 'https://www.medifind.com',
                 'Sec-Fetch-Dest': 'empty',
@@ -136,6 +136,7 @@ class PhysicianScraper:
                         'state': physician.get('address', {}).get('stateProvinceCode', '') if 'address' in physician else '',
                         'affiliations': physician.get('affiliations', {}).get('practice', []) if isinstance(physician.get('affiliations', {}), dict) else [],
                         'country': 'USA',
+                        'personId': physician.get('personId', ''),
                         'demography': physician.get('demographics', {}).get('sex', '') if 'demographics' in physician else '',
                         'yearsOfExperience': physician.get('yearsOfExperience', 0),
                         'publicationCount': physician.get('publicationCount', 0),
@@ -233,6 +234,7 @@ class PhysicianScraper:
                             'state': physician.get('address', {}).get('stateProvinceCode', '') if 'address' in physician else '',
                             'affiliations': physician.get('affiliations', {}).get('practice', []) if isinstance(physician.get('affiliations', {}), dict) else [],
                             'country': 'USA',
+                            'personId': physician.get('personId', ''),
                             'demography': physician.get('demographics', {}).get('sex', '') if 'demographics' in physician else '',
                             'yearsOfExperience': physician.get('yearsOfExperience', 0),
                             'publicationCount': physician.get('publicationCount', 0),
@@ -605,6 +607,7 @@ class PhysicianScraper:
                 'State': doctor.get('state', ''),
                 'Country': doctor.get('country', 'USA'),
                 'Demography': demography,
+                'Person ID': doctor.get('personId', ''),
                 'Years of Experience': doctor.get('yearsOfExperience', 0),
                 'Patient Volume': doctor.get('patientVolume', 0),
                 'Research Publications': doctor.get('publicationCount', 0),
@@ -817,7 +820,7 @@ def main():
             # Data table (same structure as full dataset)
             st.header("📋 Physician Data Table")
             st.write(f"Showing {len(filtered_df)} of {len(df)} physicians")
-            page_columns = ['Name', 'Title', 'Specialty', 'Hospital/Affiliation', 'Address Line', 'City', 'State', 'Demography', 'Years of Experience', 'Research Publications', 'Clinical Trials', 'Rating', 'Score', 'Doctor Tier']
+            page_columns = ['Name', 'Title', 'Specialty', 'Hospital/Affiliation', 'Address Line', 'City', 'State', 'Demography', 'Person ID', 'Years of Experience', 'Research Publications', 'Clinical Trials', 'Rating', 'Score', 'Doctor Tier']
             display_df = filtered_df[page_columns].copy()
             for col in display_df.columns:
                 if display_df[col].dtype in ['int64', 'float64']:
@@ -954,7 +957,7 @@ def main():
             filtered_full_df = filtered_full_df[filtered_full_df['Research Publications'] >= filter_min_pubs]
             st.write(f"Showing {len(filtered_full_df):,} of {len(full_df):,} physicians")
             st.subheader("📋 Full Dataset Table")
-            full_columns = ['Name', 'Title', 'Specialty', 'Hospital/Affiliation', 'Address Line', 'City', 'State', 'Demography', 'Years of Experience', 'Research Publications', 'Clinical Trials', 'Rating', 'Score', 'Doctor Tier']
+            full_columns = ['Name', 'Title', 'Specialty', 'Hospital/Affiliation', 'Address Line', 'City', 'State', 'Demography', 'Person ID', 'Years of Experience', 'Research Publications', 'Clinical Trials', 'Rating', 'Score', 'Doctor Tier']
             display_full_df = filtered_full_df[full_columns].copy()
             for col in display_full_df.columns:
                 if display_full_df[col].dtype in ['int64', 'float64']:
