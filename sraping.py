@@ -10,6 +10,29 @@ import re
 from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
+def fetch_npi_for_physicians(df):
+    """Fetch NPI IDs for each physician using the NPI Registry API and add as a new column 'NPI'."""
+    import requests
+    npi_list = []
+    for idx, row in df.iterrows():
+        first_name = row.get('First Name', '')
+        last_name = row.get('Last Name', '')
+        postal_code = row.get('Postal Code', '')
+        npi_id = ''
+        if first_name and last_name and postal_code:
+            url = f'https://npiregistry.cms.hhs.gov/api/?version=2.1&first_name={first_name}&last_name={last_name}&postal_code={postal_code}'
+            try:
+                resp = requests.get(url, timeout=10)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if 'results' in data and data['results']:
+                        npi_id = ', '.join([str(r.get('number', '')) for r in data['results'] if r.get('number')])
+            except Exception:
+                npi_id = ''
+        npi_list.append(npi_id)
+    df = df.copy()
+    df['NPI'] = npi_list
+    return df
 
 # Set page configuration
 st.set_page_config(
@@ -35,7 +58,7 @@ class PhysicianScraper:
                 'Accept-Encoding': 'gzip, deflate, br',
                 'Connection': 'keep-alive',
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MjMyMzI2LCJlbWFpbCI6Im11c3RhZmFrYXJhbmphd2FsYTcyQGdtYWlsLmNvbSIsImdpdmVuTmFtZSI6Ik11c3RhZmEiLCJmYW1pbHlOYW1lIjoiS2FyYW5qYXdhbGEiLCJoYXNQTUFjY291bnQiOmZhbHNlLCJ2YWxpZEFkbWluRG9tYWluIjpmYWxzZSwicG1UZWFtRGlzYWJsZWRTdGF0dXMiOm51bGwsInByb2ZpbGVNYW5hZ2VtZW50QWNjb3VudERpc2FibGVkIjpudWxsLCJOUEkiOm51bGwsImlhdCI6MTc1MjU2NjI1OCwiZXhwIjoxNzUyNjUyNjU4LCJpc3MiOiJNZWRpRmluZCJ9.o4NJJJYNZ1dhKborzW5NgOtysFgDtF9apM9X57-K3nI',
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MjMyMzI2LCJlbWFpbCI6Im11c3RhZmFrYXJhbmphd2FsYTcyQGdtYWlsLmNvbSIsImdpdmVuTmFtZSI6Ik11c3RhZmEiLCJmYW1pbHlOYW1lIjoiS2FyYW5qYXdhbGEiLCJoYXNQTUFjY291bnQiOmZhbHNlLCJ2YWxpZEFkbWluRG9tYWluIjpmYWxzZSwicG1UZWFtRGlzYWJsZWRTdGF0dXMiOm51bGwsInByb2ZpbGVNYW5hZ2VtZW50QWNjb3VudERpc2FibGVkIjpudWxsLCJOUEkiOm51bGwsImlhdCI6MTc1MjU4ODI1OCwiZXhwIjoxNzUyNjc0NjU4LCJpc3MiOiJNZWRpRmluZCJ9.YBUUTJpwFSQDH_1E2YNud5HNEkIQwLlp0uQ_hzh0u78',
                 'Referer': 'https://www.medifind.com/conditions/neuroendocrine-tumor/3766/doctors',
                 'Origin': 'https://www.medifind.com',
                 'Sec-Fetch-Dest': 'empty',
@@ -79,7 +102,7 @@ class PhysicianScraper:
     def fetch_from_api(self, condition_id=3766, page=0, limit=50):
         """Fetch physician data from the API with authentication"""
         payload = {
-            "specialty": ["oncology"],
+            "specialty": ["hematology-oncology"],
             "projectId": condition_id,
             "radius": None,
             "lat": None,
@@ -126,12 +149,13 @@ class PhysicianScraper:
                         address = f"{city}, {state}".strip(", ")
                     
                     physician_data = {
-                        'firstName': first_name,
-                        'lastName': last_name,
+                        'firstName': physician.get('name', '').split()[0] if 'name' in physician else '',
+                        'lastName': physician.get('name', '').split()[-1] if 'name' in physician and len(physician['name'].split()) > 1 else '',
                         'title': physician.get('title', ''),
                         'specialties': physician.get('specialties', []),
                         'hospitals': physician.get('primaryOrgName', ''),
                         'addressline1': physician.get('address', {}).get('addressLine1', '') if 'address' in physician else '',
+                        'postalCode': physician.get('address', {}).get('postalCode', '') if 'address' in physician else '',
                         'city': physician.get('address', {}).get('city', '') if 'address' in physician else '',
                         'state': physician.get('address', {}).get('stateProvinceCode', '') if 'address' in physician else '',
                         'affiliations': physician.get('affiliations', {}).get('practice', []) if isinstance(physician.get('affiliations', {}), dict) else [],
@@ -174,7 +198,7 @@ class PhysicianScraper:
             while True:
                 st.info(f"🔄 Fetching page {page + 1} (batch size: {page_size})...")
                 payload = {
-                    "specialty": ["oncology"],
+                    "specialty": ["hematology-oncology"],
                     "projectId": condition_id,
                     "radius": None,
                     "lat": None,
@@ -224,12 +248,13 @@ class PhysicianScraper:
                         if "specialties" in physician and isinstance(physician["specialties"], list):
                             specialty = ", ".join([spec["name"] for spec in physician["specialties"] if "name" in spec])
                         physician_data = {
-                            'firstName': first_name,
-                            'lastName': last_name,
+                            'firstName': physician.get('name', '').split()[0] if 'name' in physician else '',
+                            'lastName': physician.get('name', '').split()[-1] if 'name' in physician and len(physician['name'].split()) > 1 else '',
                             'title': physician.get('title', ''),
                             'specialties': physician.get('specialties', []),
                             'hospitals': physician.get('primaryOrgName', ''),
                             'addressline1': physician.get('address', {}).get('addressLine1', '') if 'address' in physician else '',
+                            'postalCode': physician.get('address', {}).get('postalCode', '') if 'address' in physician else '',
                             'city': physician.get('address', {}).get('city', '') if 'address' in physician else '',
                             'state': physician.get('address', {}).get('stateProvinceCode', '') if 'address' in physician else '',
                             'affiliations': physician.get('affiliations', {}).get('practice', []) if isinstance(physician.get('affiliations', {}), dict) else [],
@@ -598,6 +623,9 @@ class PhysicianScraper:
                 else:
                     hospital_affiliation = str(aff_list)
             physician_info = {
+                'First Name': doctor.get('firstName', ''),
+                'Last Name': doctor.get('lastName', ''),
+                'Postal Code': doctor.get('postalCode', ''),
                 'Name': f"{doctor.get('firstName', '')} {doctor.get('lastName', '')}".strip(),
                 'Title': doctor.get('title', ''),
                 'Specialty': specialty,
@@ -638,7 +666,7 @@ def main():
         st.session_state['all_physicians_df'] = pd.DataFrame()
     
     # Create tabs
-    tab1, tab2, tab3 = st.tabs(["📊 Dashboard", "📁 Full Dataset", "🏅 Areas of Expertise"])
+    tab1, tab2, tab4 = st.tabs(["📊 Dashboard", "📁 Full Dataset", "🆔 Physician NPI Table"])
     
     with tab1:
         # Sidebar controls
@@ -820,7 +848,7 @@ def main():
             # Data table (same structure as full dataset)
             st.header("📋 Physician Data Table")
             st.write(f"Showing {len(filtered_df)} of {len(df)} physicians")
-            page_columns = ['Name', 'Title', 'Specialty', 'Hospital/Affiliation', 'Address Line', 'City', 'State', 'Demography', 'Person ID', 'Years of Experience', 'Research Publications', 'Clinical Trials', 'Rating', 'Score', 'Doctor Tier']
+            page_columns = ['First Name', 'Last Name', 'Name', 'Title', 'Specialty', 'Hospital/Affiliation', 'Address Line', 'City', 'State', 'Postal Code', 'Demography', 'Person ID', 'Years of Experience', 'Research Publications', 'Clinical Trials', 'Rating', 'Score', 'Doctor Tier']
             display_df = filtered_df[page_columns].copy()
             for col in display_df.columns:
                 if display_df[col].dtype in ['int64', 'float64']:
@@ -957,22 +985,25 @@ def main():
             filtered_full_df = filtered_full_df[filtered_full_df['Research Publications'] >= filter_min_pubs]
             st.write(f"Showing {len(filtered_full_df):,} of {len(full_df):,} physicians")
             st.subheader("📋 Full Dataset Table")
-            full_columns = ['Name', 'Title', 'Specialty', 'Hospital/Affiliation', 'Address Line', 'City', 'State', 'Demography', 'Person ID', 'Years of Experience', 'Research Publications', 'Clinical Trials', 'Rating', 'Score', 'Doctor Tier']
-            display_full_df = filtered_full_df[full_columns].copy()
-            for col in display_full_df.columns:
-                if display_full_df[col].dtype in ['int64', 'float64']:
+            # Add NPI fetching and column
+            with st.spinner("🔄 Fetching NPI IDs for all physicians in the full dataset. This may take a while..."):
+                filtered_full_df_npi = fetch_npi_for_physicians(filtered_full_df)
+            full_columns_npi = ['First Name', 'Last Name', 'Postal Code', 'Name', 'Title', 'Specialty', 'Hospital/Affiliation', 'Address Line', 'City', 'State', 'Demography', 'Person ID', 'NPI', 'Years of Experience', 'Research Publications', 'Clinical Trials', 'Rating', 'Score', 'Doctor Tier']
+            display_full_df_npi = filtered_full_df_npi[full_columns_npi].copy()
+            for col in display_full_df_npi.columns:
+                if display_full_df_npi[col].dtype in ['int64', 'float64']:
                     if col in ['Rating', 'Score']:
-                        display_full_df[col] = display_full_df[col].round(2)
+                        display_full_df_npi[col] = display_full_df_npi[col].round(2)
                     elif col in ['Years of Experience', 'Research Publications', 'Clinical Trials']:
-                        display_full_df[col] = display_full_df[col].astype(int)
-            st.dataframe(display_full_df, use_container_width=True, height=600)
-            full_csv = display_full_df.to_csv(index=False)
+                        display_full_df_npi[col] = display_full_df_npi[col].astype(int)
+            st.dataframe(display_full_df_npi, use_container_width=True, height=600)
+            full_csv_npi = display_full_df_npi.to_csv(index=False)
             st.download_button(
-                label="📥 Download Full Dataset CSV",
-                data=full_csv,
-                file_name=f"full_dataset_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                label="📥 Download Full Dataset with NPI CSV",
+                data=full_csv_npi,
+                file_name=f"full_dataset_with_npi_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                 mime="text/csv",
-                help=f"Download {len(filtered_full_df):,} filtered physician records"
+                help=f"Download {len(filtered_full_df_npi):,} filtered physician records with NPI IDs"
             )
         else:
             st.info("📥 No full dataset available. Use the 'Download ALL Records' button in the sidebar to fetch the complete dataset.")
@@ -984,30 +1015,27 @@ def main():
             4. 📁 Return to this tab to view and analyze the complete dataset
             The full dataset contains all available physician records with complete information.
             """)
-    # Third tab for Areas of Expertise
-    with tab3:
-        st.header("🏅 Areas of Expertise Table")
-        st.markdown("Fetches expertise levels from a Medifind doctor profile using BeautifulSoup.")
-        profile_url = "https://www.medifind.com/conditions/neuroendocrine-tumor/3766/doctors/james-c-yao/8968727"
-        st.write(f"Profile URL: {profile_url}")
-        response = requests.get(profile_url, timeout=30) 
-        st.write("Raw response text:", response.text)  # Show first 500 chars for brevity
-        # if st.button("Fetch Areas of Expertise", key="fetch_expertise"):
-        #     try:
-        #         response = requests.get(profile_url, timeout=30) 
-        #         response.raise_for_status()
-        #         st.write("Raw expertise_elements:", response.text)
-        #         soup = BeautifulSoup(response.text, 'html')
-        #         expertise_elements = soup.find_all(class_="AccordionSection_section-header-title__pQaPc")
-        #         st.write("Raw expertise_elements:", expertise_elements)
-        #         expertise_list = [el.get_text(strip=True) for el in expertise_elements]
-        #         if expertise_list:
-        #             df_expertise = pd.DataFrame({'Expertise Title': expertise_list})
-        #             st.dataframe(df_expertise, use_container_width=True)
-        #         else:
-        #             st.warning("No expertise titles found on the page.")
-        #     except Exception as e:
-        #         st.error(f"Error fetching expertise: {str(e)}")
+    # Third tab for NPI Table
+    with tab4:
+        st.header("🆔 Physician NPI Table")
+        st.markdown("This table includes NPI IDs fetched from the NPI Registry API for each physician.")
+        if 'physicians_data' in st.session_state and not st.session_state['physicians_data'].empty:
+            df = st.session_state['physicians_data'].copy()
+            with st.spinner("🔄 Fetching NPI IDs for all physicians. This may take a while..."):
+                df_npi = fetch_npi_for_physicians(df)
+            npi_columns = ['First Name', 'Last Name', 'Postal Code', 'Name', 'Title', 'Specialty', 'Hospital/Affiliation', 'Address Line', 'City', 'State', 'Demography', 'Person ID', 'NPI', 'Years of Experience', 'Research Publications', 'Clinical Trials', 'Rating', 'Score', 'Doctor Tier']
+            display_npi_df = df_npi[npi_columns].copy()
+            st.dataframe(display_npi_df, use_container_width=True, height=600)
+            npi_csv = display_npi_df.to_csv(index=False)
+            st.download_button(
+                label="Download Physician NPI Table CSV",
+                data=npi_csv,
+                file_name=f"physician_npi_table_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                help=f"Download physician NPI table with NPI IDs"
+            )
+        else:
+            st.info("No physician data available. Please fetch physician data first.")
 
 if __name__ == "__main__":
     main()
